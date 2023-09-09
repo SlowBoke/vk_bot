@@ -4,18 +4,15 @@ from random import randint
 import vk_api
 import vk_api.bot_longpoll
 
-group_id = 222488942
-
 
 class VkBot:
+    group_id = 222488942
 
-    def __init__(self, group_id, access_token):
-        self.g_id = group_id
+    def __init__(self, access_token):
         self.token = access_token
-
         self.vk = vk_api.VkApi(token=self.token)
         self.vk_methods = self.vk.get_api()
-        self.long_poller = vk_api.bot_longpoll.VkBotLongPoll(vk=self.vk, group_id=self.g_id, wait=25)
+        self.long_poller = vk_api.bot_longpoll.VkBotLongPoll(vk=self.vk, group_id=self.group_id, wait=25)
 
     def run(self):
         for event in self.long_poller.listen():
@@ -30,7 +27,7 @@ class VkBot:
 
 
 def main():
-    vk_bot = VkBot(group_id=group_id, access_token=token)
+    vk_bot = VkBot(access_token=token)
     vk_bot.run()
 
 
