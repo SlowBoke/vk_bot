@@ -16,7 +16,7 @@ class VkBot:
     """
     Echo bot for the vk.com
 
-    Use Python3.11
+    Used Python3.11
     """
 
     def __init__(self, access_token, group_id):
