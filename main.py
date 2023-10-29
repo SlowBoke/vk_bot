@@ -22,6 +22,7 @@ def db_init():
     db.database_proxy.initialize(database)
 
     database.create_tables([db.UserState, db.Registration], safe=True)
+    return database
 
 
 class VkBot:
