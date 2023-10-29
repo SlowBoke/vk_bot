@@ -40,7 +40,8 @@ def generate_ticket(name, email):
 
     temp_file = BytesIO()
     base.save(temp_file, 'png')
-    base.show()
+    # base.show()
+    temp_file.seek(0)
 
     return temp_file
 
@@ -67,4 +68,4 @@ def generate_code(email):
     return image_like
 
 
-generate_ticket(name='Попыт', email='simple_dimple@gmail.com')
+# generate_ticket(name='Попыт', email='simpledimple@gmail.com')

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import requests
 
 import handlers
 import settings
@@ -55,32 +56,62 @@ class VkBot:
         states = db.UserState.select()
         for state in states:
             if user_id == state.user_id:
-                text_to_send = self.continue_scenario(user_id=user_id, text=text)
+                self.continue_scenario(user_id=user_id, text=text)
                 break
         else:
             for intent in settings.INTENTS:
                 if any(token in text.lower() for token in intent['tokens']):
                     if intent['answer']:
-                        text_to_send = intent['answer']
+                        self.send_text(text_to_send=intent['answer'], user_id=user_id)
                     else:
-                        text_to_send = self.start_scenario(user_id=user_id, scenario_name=intent['scenario'])
+                        self.start_scenario(user_id=user_id, scenario_name=intent['scenario'], text=text)
                     break
             else:
-                text_to_send = settings.DEFAULT_ANSWER
-        return text_to_send
+                self.send_text(text_to_send=settings.DEFAULT_ANSWER, user_id=user_id)
 
-    def start_scenario(self, user_id, scenario_name):
+    def send_text(self, text_to_send, user_id):
+        self.vk_methods.messages.send(
+            user_id=user_id,
+            random_id=randint(0, 2 ** 20),
+            message=text_to_send
+        )
+        main_log.info('Bot sends message back to user.')
+
+    def send_image(self, image, user_id):
+        upload_url = self.vk_methods.photos.getMessagesUploadServer()['upload_url']
+        upload_data = requests.post(url=upload_url, files={'photo': ('image.png', image, 'image/png')}).json()
+        image_data = self.vk_methods.photos.saveMessagesPhoto(**upload_data)
+
+        owner_id = image_data[0]['owner_id']
+        media_id = image_data[0]['id']
+        attachment = f'photo{owner_id}_{media_id}'
+
+        self.vk_methods.messages.send(
+            user_id=user_id,
+            random_id=randint(0, 2 ** 20),
+            attachment=attachment
+        )
+        main_log.info('Bot sends a ticket image to user.')
+
+    def send_step(self, step, user_id, text, context):
+        if 'text' in step:
+            self.send_text(text_to_send=step['text'].format(**context), user_id=user_id)
+        if 'image' in step:
+            handler = getattr(handlers, step['image'])
+            image = handler(text, context)
+            self.send_image(image=image, user_id=user_id)
+
+    def start_scenario(self, user_id, scenario_name, text):
         scenario = settings.SCENARIOS[scenario_name]
         first_step = scenario['first_step']
         cur_step = scenario['steps'][first_step]
-        text_to_send = cur_step['text']
+        self.send_step(text=text, user_id=user_id, step=cur_step, context={})
         db.UserState.create(
             user_id=user_id,
             scenario_name=scenario_name,
             step_name=first_step,
             context={}
         )
-        return text_to_send
 
     def continue_scenario(self, user_id, text):
         state = db.UserState.select().where(db.UserState.user_id == user_id).get()
@@ -90,7 +121,7 @@ class VkBot:
         handler = getattr(handlers, step['handler'])
         if handler(text=text, context=state.context):
             next_step = steps[step['next_step']]
-            text_to_send = next_step['text'].format(**state.context)
+            self.send_step(step=next_step, user_id=user_id, text=text, context=state.context)
             if next_step['next_step']:
                 state.step_name = step['next_step']
             else:
@@ -98,8 +129,9 @@ class VkBot:
                 db.UserState.delete().where(db.UserState.user_id == user_id).execute()
         else:
             text_to_send = step['failure_text'].format(**state.context)
+            self.send_text(text_to_send=text_to_send, user_id=user_id)
+
         state.save()
-        return text_to_send
 
     def event_handler(self, event):
         """
@@ -109,14 +141,8 @@ class VkBot:
         :return: None
         """
         if event.type == VkBotEventType.MESSAGE_NEW:
-            text_to_send = self.message_new_event(event=event)
             main_log.info("Bot gets an user's message.")
-            self.vk_methods.messages.send(
-                user_id=event.object.message['from_id'],
-                random_id=randint(0, 2 ** 20),
-                message=text_to_send
-            )
-            main_log.info('Bot sends message back to user.')
+            self.message_new_event(event=event)
         else:
             main_log.info(f"Bot can't handle type of the current event: {event.type}")
 
