@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from io import BytesIO
-import requests
-from PIL import Image, ImageDraw, ImageFont
 import qrcode
+import requests
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
 
 TEMPLATE_PATH = 'files\\ticket_sample2.png'
 FONT_PATH = 'files\\Roboto-Regular.ttf'
@@ -13,13 +13,14 @@ BLACK = (0, 0, 0, 255)
 NAME_OFFSET = (120, 793)
 EMAIL_OFFSET = (120, 885)
 
-AVATAR_RESIZE = (450, 450)
 AVATAR_OFFSET = (120, 160)
 
+QR_RESIZE = (450, 450)
 QR_OFFSET = (1645, 300)
 
 
 def generate_ticket(name, email):
+    """Generating a ticket consisting of text, QR-code and random avatar."""
     base = Image.open(TEMPLATE_PATH).convert('RGBA')
     font = ImageFont.truetype(FONT_PATH, FONT_SIZE)
 
@@ -33,7 +34,7 @@ def generate_ticket(name, email):
 
     qr = generate_code(email=email)
     qr_image = Image.open(qr)
-    qr_image.thumbnail(AVATAR_RESIZE)
+    qr_image.thumbnail(QR_RESIZE)
 
     base.paste(avatar, AVATAR_OFFSET)
     base.paste(qr_image, QR_OFFSET)
@@ -44,7 +45,9 @@ def generate_ticket(name, email):
 
     return temp_file
 
+
 def generate_code(email):
+    """Encoding email into the QR-code"""
     code_text = email
 
     qr = qrcode.QRCode(

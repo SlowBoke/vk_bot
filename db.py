@@ -2,7 +2,6 @@
 
 import peewee
 from playhouse.sqlite_ext import JSONField
-import datetime
 
 database_proxy = peewee.Proxy()
 

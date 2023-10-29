@@ -6,10 +6,12 @@ log_settings = {
     'version': 1,
     'formatters': {
         'file_formatter': {
-            'format': '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
+            'format': '%(asctime)s-%(name)s-%(levelname)s-%(message)s',
+            'datefmt': '%Y-%m-%d %H:%M'
         },
         'stream_formatter': {
-            'format': '%(asctime)s-%(message)s'
+            'format': '%(asctime)s-%(message)s',
+            'datefmt': '%Y-%m-%d %H:%M'
         },
     },
     'handlers': {

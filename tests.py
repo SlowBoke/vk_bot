@@ -1,19 +1,13 @@
 # -*- coding: utf-8 -*-
+
+import main
+import settings
+from main import VkBot
 from copy import deepcopy
-
-import peewee
-
-import handlers
-import settings, main
 from unittest import TestCase
 from unittest.mock import patch, Mock
-from vk_api.bot_longpoll import VkBotMessageEvent
-
 from image_generator import generate_ticket
-from main import VkBot
-
-
-db = main.db_init()
+from vk_api.bot_longpoll import VkBotMessageEvent
 
 
 class Test1(TestCase):
@@ -95,8 +89,7 @@ class Test1(TestCase):
         settings.INTENTS[5]['answer']
     ]
 
-    # @db.atomic()
-    def test_vkbot_event_handler(self):
+    def test_vkbot_event_handler(self):  # Manage to use db's transaction to avoid writing test registration into db.
         send_mock = Mock()
         api_mock = Mock()
         api_mock.messages.send = send_mock
@@ -139,4 +132,3 @@ class Test1(TestCase):
             expected_bytes = expected_file.read()
 
         assert ticket_file.read() == expected_bytes
-

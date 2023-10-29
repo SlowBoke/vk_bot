@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-import requests
 
+import db
+import peewee
+import requests
 import handlers
 import settings
-import peewee
-import db
 from random import randint
+
 from vk_api import VkApi
 from log_config import main_log
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
@@ -22,7 +23,6 @@ def db_init():
     db.database_proxy.initialize(database)
 
     database.create_tables([db.UserState, db.Registration], safe=True)
-    return database
 
 
 class VkBot:
@@ -57,17 +57,22 @@ class VkBot:
         states = db.UserState.select()
         for state in states:
             if user_id == state.user_id:
+                main_log.info(f'User id{user_id} continues scenario.')
                 self.continue_scenario(user_id=user_id, text=text)
                 break
         else:
             for intent in settings.INTENTS:
                 if any(token in text.lower() for token in intent['tokens']):
                     if intent['answer']:
+                        main_log.info(f'User id{user_id} requests an intent.')
                         self.send_text(text_to_send=intent['answer'], user_id=user_id)
+
                     else:
+                        main_log.info(f'User id{user_id} starts scenario.')
                         self.start_scenario(user_id=user_id, scenario_name=intent['scenario'], text=text)
                     break
             else:
+                main_log.info(f'User id{user_id} requests non-intent option.')
                 self.send_text(text_to_send=settings.DEFAULT_ANSWER, user_id=user_id)
 
     def send_text(self, text_to_send, user_id):
@@ -76,7 +81,7 @@ class VkBot:
             random_id=randint(0, 2 ** 20),
             message=text_to_send
         )
-        main_log.info('Bot sends message back to user.')
+        main_log.info(f'User id{user_id} receives a message.')
 
     def send_image(self, image, user_id):
         upload_url = self.vk_methods.photos.getMessagesUploadServer()['upload_url']
@@ -92,7 +97,7 @@ class VkBot:
             random_id=randint(0, 2 ** 20),
             attachment=attachment
         )
-        main_log.info('Bot sends a ticket image to user.')
+        main_log.info(f'User id{user_id} receives an image.')
 
     def send_step(self, step, user_id, text, context):
         if 'text' in step:
@@ -113,6 +118,7 @@ class VkBot:
             step_name=first_step,
             context={}
         )
+        main_log.debug(f'User id{user_id} creates a db line in UserState.')
 
     def continue_scenario(self, user_id, text):
         state = db.UserState.select().where(db.UserState.user_id == user_id).get()
@@ -125,11 +131,15 @@ class VkBot:
             self.send_step(step=next_step, user_id=user_id, text=text, context=state.context)
             if next_step['next_step']:
                 state.step_name = step['next_step']
+                main_log.debug(f'User id{user_id} updates db line in UserState.')
             else:
                 db.Registration.create(name=state.context['name'], email=state.context['email'])
+                main_log.debug(f'User id{user_id} creates db line in Registration.')
                 db.UserState.delete().where(db.UserState.user_id == user_id).execute()
+                main_log.debug(f'User id{user_id} deletes db line in UserState')
         else:
             text_to_send = step['failure_text'].format(**state.context)
+            main_log.info(f'User id{user_id} failed scenario step.')
             self.send_text(text_to_send=text_to_send, user_id=user_id)
 
         state.save()
